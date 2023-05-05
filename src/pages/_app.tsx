@@ -1,6 +1,14 @@
-import '@/styles/globals.css'
-import type { AppProps } from 'next/app'
+import React from "react";
+import "../styles/globals.css";
+import BlockchainProvider from "../context/BlockchainProvider";
 
-export default function App({ Component, pageProps }: AppProps) {
-  return <Component {...pageProps} />
+function MyApp({ Component, pageProps }) {
+  return (    
+  <BlockchainProvider>
+    <Component {...pageProps} />
+  </BlockchainProvider>
+);
 }
+
+export default MyApp;
+
