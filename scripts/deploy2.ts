@@ -1,5 +1,7 @@
 const { ethers, upgrades } = require("hardhat");
 
+const newAccountAddress = "0x1D0D7cDe21A36707716c676E3c4d878dFAB1cd76";
+
 async function main() {
   const [deployer] = await ethers.getSigners();
 
@@ -11,6 +13,11 @@ async function main() {
   await mokToken.deployed();
 
   console.log("MOKToken deployed to:", mokToken.address);
+
+  // Transfer MOK tokens to the new account
+  const tokensToTransfer = ethers.utils.parseEther("1000");
+  await mokToken.transfer(newAccountAddress, tokensToTransfer);
+  console.log("Transferred", tokensToTransfer.toString(), "MOK tokens to:", newAccountAddress);
 
   // Deploy Lottery
   const Lottery = await ethers.getContractFactory("Lottery");
