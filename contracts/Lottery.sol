@@ -76,22 +76,28 @@ contract Lottery is Ownable {
 
     event TicketsBought(address indexed player, uint256 numTickets);
 
-    function drawWinner() external onlyManager {
-        require(block.timestamp >= lastDrawTime + drawInterval, "Cannot draw yet");
-        require(players.length > 0, "No players in the lottery");
+function drawWinner() external onlyManager {
+    require(block.timestamp >= lastDrawTime + drawInterval, "Cannot draw yet");
+    require(players.length > 0, "No players in the lottery");
 
-        uint256 winnerIndex = _pseudoRandom() % players.length;
-        address winner = players[winnerIndex];
+    uint256 winnerIndex = _pseudoRandom() % players.length;
+    address winner = players[winnerIndex];
 
-        mokToken.transfer(winner, prizePool);
-        prizePool = 0;
+    mokToken.transfer(winner, prizePool);
+    prizePool = 0;
 
-        lastDrawTime = block.timestamp;
+    lastDrawTime = block.timestamp;
 
-        delete players;
-
-        emit WinnerDrawn(winner);
+    // Clear the number of tickets for each player
+    for (uint256 i = 0; i < players.length; i++) {
+        tickets[players[i]] = 0;
     }
+
+    // Clear the players array
+    delete players;
+
+    emit WinnerDrawn(winner);
+}
 
     event WinnerDrawn(address indexed winner);
 
