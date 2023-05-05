@@ -1,0 +1,15 @@
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://suqingliu:011212@localhost:5432/card_game_db?schema=public"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Lottery {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  winner   String
+  prize    String
+}
