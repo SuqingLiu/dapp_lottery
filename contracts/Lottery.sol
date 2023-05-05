@@ -1,28 +1,22 @@
 pragma solidity ^0.8.0;
 
 import "./MOKToken.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
+contract Lottery is AccessControl {
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
 
-contract Lottery is Ownable {
-    using SafeMath for uint256;
-
-    MOKToken private mokToken;
-    address private feeAddress;
-    uint256 private ticketPrice;
-    uint256 private drawInterval;
+    MOKToken public mokToken;
+    address public feeAddress;
+    uint256 public ticketPrice;
+    uint256 public drawInterval;
     uint256 private lastDrawTime;
-    uint256 private prizePool;
+    uint256 public prizePool;
     uint256 private usageFees;
 
-    mapping(address => uint256) private tickets;
-    address[] private players;
-
-    modifier onlyManager() {
-        require(msg.sender == owner() || msg.sender == manager1 || msg.sender == manager2, "Not authorized");
-        _;
-    }
+    mapping(address => uint256) public tickets;
+    address[] public ticketEntries;
 
     constructor(
         MOKToken _mokToken,
@@ -34,79 +28,63 @@ contract Lottery is Ownable {
         feeAddress = _feeAddress;
         ticketPrice = _ticketPrice;
         drawInterval = _drawInterval;
-        lastDrawTime = block.timestamp;
-    }
 
-    // Variables for access control
-    address public manager1;
-    address public manager2;
-
-    function setManagers(address _manager1, address _manager2) external onlyOwner {
-        manager1 = _manager1;
-        manager2 = _manager2;
-
-        emit ManagersSet(_manager1, _manager2);
-    }
-
-    event ManagersSet(address indexed manager1, address indexed manager2);
-
-
-    function getTicketPrice() external view returns (uint256) {
-        return ticketPrice;
-    }
-
-    function getNumberOfTickets(address player) external view returns (uint256) {
-        return tickets[player];
-    }
-
-    function getPrizePool() external view returns (uint256) {
-        return prizePool;
+        _setupRole(OWNER_ROLE, _msgSender());
+        _setRoleAdmin(MANAGER_ROLE, OWNER_ROLE);
     }
 
     function buyTickets(uint256 numTickets) external {
-        uint256 amount = ticketPrice.mul(numTickets);
-        mokToken.transferFrom(msg.sender, address(this), amount);
-        prizePool = prizePool.add(amount.mul(95).div(100));
-        usageFees = usageFees.add(amount.mul(5).div(100));
-        tickets[msg.sender] = tickets[msg.sender].add(numTickets);
-        players.push(msg.sender);
+        uint256 totalPrice = ticketPrice * numTickets;
+        mokToken.transferFrom(msg.sender, address(this), totalPrice);
+
+        uint256 prizeShare = (totalPrice * 9500) / 10000;
+        prizePool += prizeShare;
+
+        uint256 feesShare = totalPrice - prizeShare;
+        usageFees += feesShare;
+
+        tickets[msg.sender] += numTickets;
+
+        for (uint256 i = 0; i < numTickets; i++) {
+            ticketEntries.push(msg.sender);
+        }
 
         emit TicketsBought(msg.sender, numTickets);
     }
 
     event TicketsBought(address indexed player, uint256 numTickets);
 
-function drawWinner() external onlyManager {
-    require(block.timestamp >= lastDrawTime + drawInterval, "Cannot draw yet");
-    require(players.length > 0, "No players in the lottery");
+    function drawWinner() external {
+        require(hasRole(MANAGER_ROLE, msg.sender) || hasRole(OWNER_ROLE, msg.sender), "Not authorized");
+        require(block.timestamp >= lastDrawTime + drawInterval, "Cannot draw yet");
+        require(ticketEntries.length > 0, "No players in the lottery");
 
-    uint256 winnerIndex = _pseudoRandom() % players.length;
-    address winner = players[winnerIndex];
+        uint256 winnerIndex = _pseudoRandom() % ticketEntries.length;
+        address winner = ticketEntries[winnerIndex];
 
-    mokToken.transfer(winner, prizePool);
-    prizePool = 0;
+        mokToken.transfer(winner, prizePool);
+        prizePool = 0;
+        lastDrawTime = block.timestamp;
 
-    lastDrawTime = block.timestamp;
+        for (uint256 i = 0; i < ticketEntries.length; i++) {
+            tickets[ticketEntries[i]] = 0;
+        }
 
-    // Clear the number of tickets for each player
-    for (uint256 i = 0; i < players.length; i++) {
-        tickets[players[i]] = 0;
+        delete ticketEntries;
+
+        emit WinnerDrawn(winner);
     }
-
-    // Clear the players array
-    delete players;
-
-    emit WinnerDrawn(winner);
-}
 
     event WinnerDrawn(address indexed winner);
 
-    function withdrawUsageFees() external onlyOwner {
+    function withdrawUsageFees() external {
+        require(hasRole(OWNER_ROLE, msg.sender), "Not authorized");
         mokToken.transfer(feeAddress, usageFees);
         usageFees = 0;
     }
 
-    function setTicketPrice(uint256 _ticketPrice) external onlyOwner {
+    function setTicketPrice(uint256 _ticketPrice) external {
+        require(hasRole(OWNER_ROLE, msg.sender), "Not authorized");
         ticketPrice = _ticketPrice;
 
         emit TicketPriceSet(_ticketPrice);
@@ -115,13 +93,6 @@ function drawWinner() external onlyManager {
     event TicketPriceSet(uint256 ticketPrice);
 
     function _pseudoRandom() private view returns (uint256) {
-        return uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, players)));
+        return uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, ticketEntries)));
     }
-
-    function getPlayers() external view returns (address[] memory) {
-        return players;
-
-    }
-
 }
-
