@@ -2,6 +2,7 @@ import React from "react";
 import {
   ShopOutlined,
   HomeOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
 import { Layout, Menu, theme } from "antd";
 import { useRouter } from "next/router";
@@ -23,12 +24,15 @@ const AntLayout = ({ children }) => {
       router.push("/");
     } else if (key === "2") {
       router.push("/purchase");
+    } else if (key === "3") {
+      router.push("/profile");
     }
   };
 
   const menuItems = [
     { key: "1", label: "Home", icon: <HomeOutlined /> },
     { key: "2", label: "Purchase", icon: <ShopOutlined /> },
+    { key: "3", label: "Profile", icon: <UserOutlined />}
   ];
 
   return (
@@ -48,7 +52,7 @@ const AntLayout = ({ children }) => {
           theme="dark"
           mode="inline"
           defaultSelectedKeys={
-            router.pathname === "/purchase" ? ["2"] : ["1"]
+            router.pathname === "/profile" ? ["3"] : router.pathname === "/purchase" ? ["2"] : ["1"]
           }
           onClick={onMenuClick}
           items={menuItems}

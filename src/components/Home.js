@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from "react";
 import { BlockchainContext } from "../context/BlockchainProvider";
 import LotteryInfo from "./LotteryInfo";
 import DrawLottery from "./DrawLottery";
-import AdjustTicketPrice from "./AdjustTicketPrice";
+
 
 
 const Home = () => {
